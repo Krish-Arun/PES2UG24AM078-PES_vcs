@@ -140,13 +140,13 @@ int tree_from_index(ObjectID *id_out) {
     Tree tree;
     tree.count = 0;
 
-    for (int i = 0; i < index.count; i++) {
-        tree.entries[tree.count].mode = index.entries[i].mode;
-        tree.entries[tree.count].hash = index.entries[i].hash;
+    for (int i = 0; i < index.count && tree.count < MAX_TREE_ENTRIES; i++) {
+    tree.entries[tree.count].mode = index.entries[i].mode;
+    tree.entries[tree.count].hash = index.entries[i].hash;
 
-        strcpy(tree.entries[tree.count].name, index.entries[i].path);
-        tree.count++;
-    }
+    strcpy(tree.entries[tree.count].name, index.entries[i].path);
+    tree.count++;
+}
 
     (void)id_out;
 void *data;
