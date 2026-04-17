@@ -224,8 +224,21 @@ int index_add(Index *index, const char *path) {
     size_t size = ftell(f);
     rewind(f);
 
-    void *data = malloc(size);
-    fread(data, 1, size, f);
+    void *data = NULL;
+    if (size > 0) {
+        data = malloc(size);
+        if (!data) {
+            fclose(f);
+            return -1;
+        }
+
+        if (fread(data, 1, size, f) != size) {
+            free(data);
+            fclose(f);
+            return -1;
+        }
+    }
+
     fclose(f);
 
     ObjectID id;
@@ -233,6 +246,7 @@ int index_add(Index *index, const char *path) {
         free(data);
         return -1;
     }
+
     free(data);
 
     struct stat st;
