@@ -129,11 +129,23 @@ int tree_serialize(const Tree *tree, void **data_out, size_t *len_out) {
 //   - object_write    : save that binary buffer to the store as OBJ_TREE
 //
 // Returns 0 on success, -1 on error.
+
 int tree_from_index(ObjectID *id_out) {
     Index index;
 
     if (index_load(&index) != 0) {
         return -1;
+    }
+
+    Tree tree;
+    tree.count = 0;
+
+    for (int i = 0; i < index.count; i++) {
+        tree.entries[tree.count].mode = index.entries[i].mode;
+        tree.entries[tree.count].hash = index.entries[i].hash;
+
+        strcpy(tree.entries[tree.count].name, index.entries[i].path);
+        tree.count++;
     }
 
     (void)id_out;
