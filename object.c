@@ -126,10 +126,49 @@ int object_write(ObjectType type, const void *data, size_t len, ObjectID *id_out
 
     compute_hash(full, full_len, id_out);
 
+    char path[512];
+    object_path(id_out, path, sizeof(path));
+
+    if (access(path, F_OK) == 0) {
+        free(full);
+        return 0;
+    }
+
+    char hex[HASH_HEX_SIZE + 1];
+    hash_to_hex(id_out, hex);
+
+    char dir[512];
+    snprintf(dir, sizeof(dir), "%s/%.2s", OBJECTS_DIR, hex);
+
+    if (mkdir(dir, 0755) != 0 && access(dir, F_OK) != 0) {
+        free(full);
+        return -1;
+    }
+
+    char tmp[512];
+    snprintf(tmp, sizeof(tmp), "%s/tmpXXXXXX", dir);
+
+    int fd = mkstemp(tmp);
+    if (fd < 0) {
+        free(full);
+        return -1;
+    }
+
+    write(fd, full, full_len);
+    fsync(fd);
+    close(fd);
+
+    rename(tmp, path);
+
+    int dfd = open(dir, O_RDONLY);
+    if (dfd >= 0) {
+        fsync(dfd);
+        close(dfd);
+    }
+
     free(full);
     return 0;
 }
-
 // Read an object from the store.
 //
 // Steps:
