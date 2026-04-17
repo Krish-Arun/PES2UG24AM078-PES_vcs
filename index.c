@@ -139,7 +139,25 @@ int index_load(Index *index) {
 
     FILE *f = fopen(INDEX_FILE, "r");
     if (!f) {
-        return 0; // empty index is valid
+        return 0;
+    }
+
+    char hash_hex[HASH_HEX_SIZE + 1];
+
+    while (index->count < MAX_INDEX_ENTRIES) {
+        IndexEntry *e = &index->entries[index->count];
+
+        if (fscanf(f, "%o %64s %ld %ld %255[^\n]\n",
+                   &e->mode,
+                   hash_hex,
+                   &e->mtime_sec,
+                   &e->size,
+                   e->path) != 5) {
+            break;
+        }
+
+        hex_to_hash(hash_hex, &e->hash);
+        index->count++;
     }
 
     fclose(f);
