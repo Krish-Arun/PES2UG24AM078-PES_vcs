@@ -174,27 +174,38 @@ int index_load(Index *index) {
 //   - rename                           : atomically moving the temp file over the old index
 //
 // Returns 0 on success, -1 on error.
+static int cmp_entries(const void *a, const void *b) {
+    return strcmp(((IndexEntry *)a)->path, ((IndexEntry *)b)->path);
+}
+
 int index_save(const Index *index) {
-    FILE *f = fopen(INDEX_FILE, "w");
+    Index temp = *index;
+    qsort(temp.entries, temp.count, sizeof(IndexEntry), cmp_entries);
+
+    char tmp[] = ".pes/index.tmp";
+
+    FILE *f = fopen(tmp, "w");
     if (!f) return -1;
 
     char hex[HASH_HEX_SIZE + 1];
 
-    for (int i = 0; i < index->count; i++) {
-        hash_to_hex(&index->entries[i].hash, hex);
+    for (int i = 0; i < temp.count; i++) {
+        hash_to_hex(&temp.entries[i].hash, hex);
 
         fprintf(f, "%o %s %ld %ld %s\n",
-                index->entries[i].mode,
+                temp.entries[i].mode,
                 hex,
-                index->entries[i].mtime_sec,
-                index->entries[i].size,
-                index->entries[i].path);
+                temp.entries[i].mtime_sec,
+                temp.entries[i].size,
+                temp.entries[i].path);
     }
 
+    fflush(f);
+    fsync(fileno(f));
     fclose(f);
-    return 0;
-}
 
+    return rename(tmp, INDEX_FILE);
+}
 // Stage a file for the next commit.
 //
 // HINTS - Useful functions and syscalls:
