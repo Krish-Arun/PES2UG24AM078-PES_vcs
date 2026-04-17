@@ -201,19 +201,32 @@ int object_read(const ObjectID *id, ObjectType *type_out, void **data_out, size_
     fseek(f, 0, SEEK_END);
     size_t size = ftell(f);
     rewind(f);
-	ObjectID actual;
-	compute_hash(buf, size, &actual);
 
-	if (memcmp(actual.hash, id->hash, HASH_SIZE) != 0) {
-    	free(buf);
-    	return -1;
-	}
     unsigned char *buf = malloc(size);
-    fread(buf, 1, size, f);
+    if (!buf) {
+        fclose(f);
+        return -1;
+    }
+
+    if (fread(buf, 1, size, f) != size) {
+        free(buf);
+        fclose(f);
+        return -1;
+    }
     fclose(f);
 
+    ObjectID actual;
+    compute_hash(buf, size, &actual);
+    if (memcmp(actual.hash, id->hash, HASH_SIZE) != 0) {
+        free(buf);
+        return -1;
+    }
+
     unsigned char *nul = memchr(buf, '\0', size);
-    if (!nul) return -1;
+    if (!nul) {
+        free(buf);
+        return -1;
+    }
 
     char header[64];
     size_t header_len = nul - buf;
@@ -222,11 +235,22 @@ int object_read(const ObjectID *id, ObjectType *type_out, void **data_out, size_
 
     char type_name[16];
     size_t data_len;
-    sscanf(header, "%s %zu", type_name, &data_len);
+    if (sscanf(header, "%s %zu", type_name, &data_len) != 2) {
+        free(buf);
+        return -1;
+    }
 
-    object_type_from_name(type_name, type_out);
+    if (object_type_from_name(type_name, type_out) != 0) {
+        free(buf);
+        return -1;
+    }
 
     void *data = malloc(data_len);
+    if (!data) {
+        free(buf);
+        return -1;
+    }
+
     memcpy(data, nul + 1, data_len);
 
     *data_out = data;
