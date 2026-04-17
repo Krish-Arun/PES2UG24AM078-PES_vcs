@@ -201,7 +201,13 @@ int object_read(const ObjectID *id, ObjectType *type_out, void **data_out, size_
     fseek(f, 0, SEEK_END);
     size_t size = ftell(f);
     rewind(f);
+	ObjectID actual;
+	compute_hash(buf, size, &actual);
 
+	if (memcmp(actual.hash, id->hash, HASH_SIZE) != 0) {
+    	free(buf);
+    	return -1;
+	}
     unsigned char *buf = malloc(size);
     fread(buf, 1, size, f);
     fclose(f);
